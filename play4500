@@ -124,15 +124,12 @@ def updateBoard(movingFrom, movingTo, movingPlayer, moveType):
 			delNode = nodes[movingFrom]
 			piece = delNode.getPiece()
 			delNode.setPiece(None)
-			nodes[movingFrom] = delNode
 			
 			
-			sys.stderr.write("Player " + str(ourPlayer) + " is deleting: " + movingFrom +  "\n")
 					
 			
 			setNode = nodes[movingTo]
 			setNode.setPiece(piece)
-			nodes[movingTo] = setNode
 							
 		elif moveType == "win":
 			#win operation
@@ -233,6 +230,16 @@ class Node:
 	def setConnections(self, connections):
 		self.connections = connections
 		
+	def __repr__(self):
+		results = "Node(Id:" + str(self.id) + " Type:" + self.type + " Piece:" + str(self.piece) #+ " Connections:["
+		
+		#for conn in self.connections:
+		#	results += str(conn) + " "
+		
+		results += ")"
+		
+		return results		
+	
 	def __str__(self):
 		results = "Node(Id:" + str(self.id) + " Type:" + self.type + " Piece:" + str(self.piece) + " Connections:["
 		
@@ -331,13 +338,13 @@ class Connection:
 		self.connectedId = connectedId
 		
 	def getType(self):
-		return self.type
+		return self.typ
 		
-	def setType(self, type):
-		self.type = type
+	def setType(self, typ):
+		self.type = typ
 
 	def __str__(self):
-		return "Connection(To:" + str(self.connectedId) + " Type:" + self.type + ") "
+		return "Connection(To:" + str(self.connectedId) + " Type:" + self.typ + ") "
 
 # calculate our next move
 def calculateMove():
@@ -346,7 +353,8 @@ def calculateMove():
 	for pos in piecePositions:
 		#for now pick any valid move, !!!!!!change to pick best move at a later date!!!!!!!!!
 		bestMove = getBestMove(pos)
-		if bestMove:
+		
+		if(bestMove):
 			return bestMove	#!!!!!!!will be moved outside for statement later!!!!!!!!
 
 # get the locations of all our pieces
@@ -356,19 +364,26 @@ def getPiecePositions():
 	for key, node in nodes.iteritems():
 		#check if a node contains a piece(!!!!!!!!!later make it only friendly pieces!!!!!!!!)
 		if node.getPiece():
-			positions.append(node.getId())
+			#if (ourPlayer == 1):
+			#	sys.stderr.write("Piece is: " + str(node.getPiece()) + " at: " + key + " adding to piece list.\n")
+			positions.append(key)
+			
 	return positions
 
 # grabs the best move for a given piece(!!!!!!!!for now just grabs the first valid move!!!!!!!)		
 def getBestMove(pos):
-	for key, node in nodes.iteritems():
-		piece = node.getPiece()
-		if piece:
-			if node.getId() == pos and not piece.getType() == "L" and not piece.getType() == "F" :
-				for connection in node.getConnections():
-					move = connection.getConnectedId()
-					if isMoveValid(move):
-						return  "(" + pos + " " + move + ")" 
+	
+	node = nodes[pos]
+	
+	piece = node.getPiece()
+	if not piece.getType() == "L" and not piece.getType() == "F":
+		for connection in node.getConnections():
+			move = connection.getConnectedId()
+			
+			if isMoveValid(move):
+				return "(" + pos + " " + move + ")"
+	
+
 		
 # determine if a move is valid(!!!!!!!!!for now means we arn't moving onto a space occupied by our own piece!!!!!!!)
 def isMoveValid(move):
@@ -539,7 +554,14 @@ def main():
 						
 			# update our board (currently ignoring opponent's pieces and railroads)
 			updateBoard(movingFrom, movingTo, movingPlayer, moveType)
-						
+				
+				
+			#We don't want to send our move, if the referee is simply reporting what we have done.
+			if(ourPlayer == int(movingPlayer)):
+				sys.stdout.flush()
+				continue
+					
+					
 			# select the next move (currently brute-force moving one piece till it dies)
 			nextMove = calculateMove()
 			
@@ -552,6 +574,9 @@ def main():
 			#	print "Error: We ran out of time to complete our move. Exiting game."
 			#	sys.exit(0)
 		
+#		if (ourPlayer == 1):
+#			sys.stderr.write(str(sorted(nodes.items())) + "\n")
+
 		sys.stdout.flush()	
 		
 if __name__ == "__main__":
