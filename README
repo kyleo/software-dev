@@ -1,0 +1,14 @@
+Nate Bessa: natebessa@gmail.com
+Kyle Oestreich: oestreich.k@husky.neu.edu
+Dan Brown: troii337@gmail.com
+Tyler Rosini rosini.t@husky.neu.edu
+
+How to Run:
+
+Our file is written in the Python programming language and does not need to be compiled. When running on the CCIS Linux machines, cd into the directory holding the "play4500" file and you can execute following command as requested in the specifications:
+
+./play4500 --go <n> --time/move <t>
+
+No third party software was used in the making of this program.
+
+Our initial board configuration is saved to a separate file called initialConfig.json and in our play4500 program, we parse his JSON into the CFG format as required by the project's specifications. We are using the JSON format because it is one that we would like to use to manage the game board later on in the implementation of our game.
