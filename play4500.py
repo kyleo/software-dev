@@ -31,7 +31,7 @@ from subprocess import PIPE, Popen
 #		./play4500 --go 1 --time/move 1.2ms		
 
 # global variables
-nodes = []
+nodes = {}
 ourPlayer = 0
 
 # syntax checking function
@@ -113,50 +113,50 @@ def updateBoard(movingFrom, movingTo, movingPlayer, moveType):
 	
 	global nodes
 	
-	# if the ref returns 1 and we need to update our side of the board
+	
 	if int(movingPlayer) == ourPlayer:
 		# updating the board for a move type "move". Just take the piece in the
 		#   MoveFrom position and put it in the moveTo position. Then empty the
 		#	old position
 		if moveType == "move":
 			#move operation
-			for node in nodes:
-				if node.getId() == movingFrom:
-					piece = node.getPieces()
-					node.setPieces(None)
-					
-			for node in nodes:				
-				if node.getId() == movingTo:
-					node.setPieces(piece)
+			
+			delNode = nodes[movingFrom]
+			piece = delNode.getPiece()
+			delNode.setPiece(None)
+			
+			setNode = nodes[movingTo]
+			setNode.setPiece(piece)
 							
 		elif moveType == "win":
 			#win operation
 			#!!! For now the same as MOVE but will need to augment enemy piece tracking in the future
-			for node in nodes:
-				if node.getId() == movingFrom:
-					piece = node.getPieces()
-					node.setPieces(None)
-					
-			for node in nodes:				
-				if node.getId() == movingTo:
-					node.setPieces(piece)
+			
+			delNode = nodes[movingFrom]
+			piece = delNode.getPiece()
+			delNode.setPiece(None)
+			
+			
+			setNode = nodes[movingTo]
+			setNode.setPiece(piece)
+				
 				
 		elif moveType == "lose":
 			#lose operation
 			# Just set the moveFrom to empty, which should delete the piece
-			for node in nodes:
-				if node.getId() == movingFrom:
-					piece = node.getPieces()
-					node.setPieces(None)
+			delNode = nodes[movingFrom]
+			piece = delNode.getPiece()
+			delNode.setPiece(None)
+			
 								
 		elif moveType == "tie":
 			#tie operation
 			# Just set the moveFrom to empty, which should delete the piece
 			#in the future will need to Augment Enemy board and pieces as well.
-			for node in nodes:
-				if node.getId() == movingFrom:
-					piece = node.getPieces()
-					node.setPieces(None)
+			delNode = nodes[movingFrom]
+			piece = delNode.getPiece()
+			delNode.setPiece(None)
+			
 					
 	else:
 		#updated player 2 section of the board
@@ -164,20 +164,22 @@ def updateBoard(movingFrom, movingTo, movingPlayer, moveType):
 		
 		if moveType == "win":
 			#lose operation
-			# Just set the moveFrom to empty, which should delete the piece
-			for node in nodes:
-				if node.getId() == movingTo:
-					piece = node.getPieces()
-					node.setPieces(None)
+			# Just set the moveTo to empty, which should delete the piece
+			
+			delNode = nodes[movingTo]
+			piece = delNode.getPiece()
+			delNode.setPiece(None)
+			
+			
 
 		elif moveType == "tie":
 			#tie operation
-			# Just set the moveFrom to empty, which should delete the piece
+			# Just set the moveTo to empty, which should delete the piece
 			#in the future will need to Augment Enemy board and pieces as well.
-			for node in nodes:
-				if node.getId() == movingTo:
-					piece = node.getPieces()
-					node.setPieces(None)
+			delNode = nodes[movingTo]
+			piece = delNode.getPiece()
+			delNode.setPiece(None)
+					
 
 
 
@@ -189,15 +191,16 @@ def injectPiece(piece, id):
 	piecePos = piece["position"]
 	pieceType = piece["piece"]
 	
-	for idx, node in enumerate(nodes):
-		if (piecePos == node.getId()):
-			node.setPieces(FPiece(id, pieceType))
-
+	node = nodes[piecePos]
+	node.setPiece(FPiece(id, pieceType))
+	nodes[piecePos] = node
+	
+	
 class Node:
-	def __init__(self, id, type, pieces, connections):
+	def __init__(self, id, type, piece, connections):
 		self.id = id
 		self.type = type
-		self.pieces = pieces
+		self.piece = piece
 		self.connections = connections
 	  
 	def getId(self):
@@ -212,11 +215,11 @@ class Node:
 	def setType(self, type):
 		self.type = type
 		
-	def getPieces(self):
-		return self.pieces
+	def getPiece(self):
+		return self.piece
 	
-	def setPieces(self, pieces):
-		self.pieces = pieces
+	def setPiece(self, piece):
+		self.piece = piece
 	
 	def getConnections(self):
 		return self.connections  
@@ -224,8 +227,18 @@ class Node:
 	def setConnections(self, connections):
 		self.connections = connections
 		
+	def __repr__(self):
+		results = "Node(Id:" + str(self.id) + " Type:" + self.type + " Piece:" + str(self.piece) #+ " Connections:["
+		
+		#for conn in self.connections:
+		#	results += str(conn) + " "
+		
+		results += ")"
+		
+		return results		
+	
 	def __str__(self):
-		results = "Node(Id:" + str(self.id) + " Type:" + self.type + " Pieces:" + str(self.pieces) + " Connections:["
+		results = "Node(Id:" + str(self.id) + " Type:" + self.type + " Piece:" + str(self.piece) + " Connections:["
 		
 		for conn in self.connections:
 			results += str(conn) + " "
@@ -269,6 +282,63 @@ class EPiece:
 	def __str__(self):
 		return "EPiece(Id: " + str(self.id) + ") "
 
+#Track what enemy pieces are left
+#KO @30March
+class EPieceCount:
+	EPieces = {"FldMshl": 1, 
+				"Gen" : 1,
+				"LtGen": 2,
+				"BrigGen": 2,
+				"Col" : 2,
+				"Maj": 2,
+				"Capt" : 3,
+				"PlCmdr" : 3,
+				"Engr" : 3,
+				"Gren" : 2,
+				"LndMn": 2,
+				"Flg" :1}
+				
+	def	__init__(self, epieces):
+		self.epieces = EPieces
+	
+	def getAmtOfType(self, amt):
+		return self.Epieces[amt]
+	
+	def setAmtOfTyp(self, typ, amt):
+		self.EPieces[typ] = amt
+	
+	def setAmts(self, hshmp):
+		self.EPieces = hshmp
+
+#Track which of our pieces are left
+#KO @30March 
+class EPieceCount:
+	EPieces = {"FldMshl": 1, 
+				"Gen" : 1,
+				"LtGen": 2,
+				"BrigGen": 2,
+				"Col" : 2,
+				"Maj": 2,
+				"Capt" : 3,
+				"PlCmdr" : 3,
+				"Engr" : 3,
+				"Gren" : 2,
+				"LndMn": 2,
+				"Flg" :1}
+				
+	def	__init__(self, epieces):
+		self.epieces = EPieces
+	
+	def getAmtOfType(self, amt):
+		return self.Epieces[amt]
+	
+	def setAmtOfTyp(self, typ, amt):
+		self.EPieces[typ] = amt
+	
+	def setAmts(self, hshmp):
+		self.EPieces = hshmp
+'''
+
 #Tracks probabilities of possible piece types.
 # 	utilizes hasmap to map piece type to %
 class typeProbs:
@@ -306,6 +376,8 @@ class typeProbs:
 	def getLeastProb:
 		return min(self.probDict, key=self.probDict.get)
 
+'''
+
 class Connection:
 	def __init__(self, connectedId, typ):
 		self.connectedId = connectedId
@@ -318,13 +390,13 @@ class Connection:
 		self.connectedId = connectedId
 		
 	def getType(self):
-		return self.type
+		return self.typ
 		
-	def setType(self, type):
-		self.type = type
+	def setType(self, typ):
+		self.type = typ
 
 	def __str__(self):
-		return "Connection(To:" + str(self.connectedId) + " Type:" + self.type + ") "
+		return "Connection(To:" + str(self.connectedId) + " Type:" + self.typ + ") "
 
 # calculate our next move
 def calculateMove():
@@ -333,38 +405,47 @@ def calculateMove():
 	for pos in piecePositions:
 		#for now pick any valid move, !!!!!!change to pick best move at a later date!!!!!!!!!
 		bestMove = getBestMove(pos)
-		if bestMove:
+		
+		if(bestMove):
 			return bestMove	#!!!!!!!will be moved outside for statement later!!!!!!!!
 
 # get the locations of all our pieces
 def getPiecePositions():
 	positions = []
-	for node in nodes:
+	
+	for key, node in nodes.iteritems():
 		#check if a node contains a piece(!!!!!!!!!later make it only friendly pieces!!!!!!!!)
-		if node.getPieces():
-			positions.append(node.getId())
+		if node.getPiece():
+			#if (ourPlayer == 1):
+			#	sys.stderr.write("Piece is: " + str(node.getPiece()) + " at: " + key + " adding to piece list.\n")
+			positions.append(key)
+			
 	return positions
 
 # grabs the best move for a given piece(!!!!!!!!for now just grabs the first valid move!!!!!!!)		
 def getBestMove(pos):
-	for node in nodes:
-		piece = node.getPieces()
-		if piece:
-			if node.getId() == pos and not piece.getType() == "L" and not piece.getType() == "F" :
-				for connection in node.getConnections():
-					move = connection.getConnectedId()
-					if isMoveValid(move):
-						return  "(" + pos + " " + move + ")" 
+	
+	node = nodes[pos]
+	
+	piece = node.getPiece()
+	if not piece.getType() == "L" and not piece.getType() == "F":
+		for connection in node.getConnections():
+			move = connection.getConnectedId()
+			
+			if isMoveValid(move):
+				return "(" + pos + " " + move + ")"
+	
+
 		
 # determine if a move is valid(!!!!!!!!!for now means we arn't moving onto a space occupied by our own piece!!!!!!!)
 def isMoveValid(move):
-	for node in nodes:
-		if node.getId() == move:
-			if node.getPieces():
-				return False
-			else:
-				return True
-        
+
+	if nodes[move].getPiece():
+		return False
+	else:
+		return True
+		
+		        
 def main():
 	
 	global nodes
@@ -386,74 +467,74 @@ def main():
 	ourPlayer = int(args[1])
 
 	#A nodes	
-	nodes.append(Node("A1","standard", None, [Connection("B1", "standard"),Connection("A2", "standard")]))
-	nodes.append(Node("A2","standard", None, [Connection("A1", "standard"),Connection("B2", "rail"),Connection("B3","standard"),Connection("A3","rail")]))
-	nodes.append(Node("A3","standard", None, [Connection("A2", "rail"),Connection("B3", "standard"),Connection("A4","rail")]))
-	nodes.append(Node("A4","standard", None, [Connection("A3", "rail"),Connection("B3", "standard"),Connection("B4","standard"),Connection("B5","standard"),Connection("A5","rail")]))
-	nodes.append(Node("A5","standard", None, [Connection("A4", "rail"),Connection("B5", "standard"),Connection("A6","rail")]))
-	nodes.append(Node("A6","standard", None, [Connection("A5", "rail"),Connection("B5", "standard"),Connection("B6","rail"),Connection("A7","rail")]))
-	nodes.append(Node("A7","standard", None, [Connection("A6", "rail"),Connection("B7", "rail"),Connection("B8","standard"),Connection("A8","rail")]))
-	nodes.append(Node("A8","standard", None, [Connection("A7", "rail"),Connection("B8", "standard"),Connection("A9","rail")]))
-	nodes.append(Node("A9","standard", None, [Connection("A8", "rail"),Connection("B8", "standard"),Connection("B9","standard"),Connection("B10","standard"),Connection("A10","rail")]))
-	nodes.append(Node("A10","standard", None, [Connection("A9", "rail"),Connection("B10", "standard"),Connection("A11","rail")]))
-	nodes.append(Node("A11","standard", None, [Connection("A10", "rail"),Connection("B10","standard"),Connection("B11","rail"),Connection("A12","standard")]))
-	nodes.append(Node("A12","standard", None, [Connection("A11", "standard"),Connection("B12","standard")]))
+	nodes["A1"] = Node("A1","standard", None, [Connection("B1", "standard"),Connection("A2", "standard")])
+	nodes["A2"] = (Node("A2","standard", None, [Connection("A1", "standard"),Connection("B2", "rail"),Connection("B3","standard"),Connection("A3","rail")]))
+	nodes["A3"] = (Node("A3","standard", None, [Connection("A2", "rail"),Connection("B3", "standard"),Connection("A4","rail")]))
+	nodes["A4"] = (Node("A4","standard", None, [Connection("A3", "rail"),Connection("B3", "standard"),Connection("B4","standard"),Connection("B5","standard"),Connection("A5","rail")]))
+	nodes["A5"] = (Node("A5","standard", None, [Connection("A4", "rail"),Connection("B5", "standard"),Connection("A6","rail")]))
+	nodes["A6"] = (Node("A6","standard", None, [Connection("A5", "rail"),Connection("B5", "standard"),Connection("B6","rail"),Connection("A7","rail")]))
+	nodes["A7"] = (Node("A7","standard", None, [Connection("A6", "rail"),Connection("B7", "rail"),Connection("B8","standard"),Connection("A8","rail")]))
+	nodes["A8"] = (Node("A8","standard", None, [Connection("A7", "rail"),Connection("B8", "standard"),Connection("A9","rail")]))
+	nodes["A9"] = (Node("A9","standard", None, [Connection("A8", "rail"),Connection("B8", "standard"),Connection("B9","standard"),Connection("B10","standard"),Connection("A10","rail")]))
+	nodes["A10"] = (Node("A10","standard", None, [Connection("A9", "rail"),Connection("B10", "standard"),Connection("A11","rail")]))
+	nodes["A11"] = (Node("A11","standard", None, [Connection("A10", "rail"),Connection("B10","standard"),Connection("B11","rail"),Connection("A12","standard")]))
+	nodes["A12"] = (Node("A12","standard", None, [Connection("A11", "standard"),Connection("B12","standard")]))
 			
 	#B nodes
-	nodes.append(Node("B1","HQ", None, [Connection("C1", "standard"),Connection("B2", "standard"),Connection("A1", "standard")]))
-	nodes.append(Node("B2","standard", None, [Connection("B1", "standard"),Connection("C2", "rail"),Connection("B3","standard"),Connection("A2","rail")]))
-	nodes.append(Node("B3","camp", None, [Connection("B2", "standard"),Connection("C2", "standard"),Connection("C3","standard"),Connection("C4", "standard"),Connection("B4", "standard"),Connection("A4","standard"),Connection("A3","standard"),Connection("A2","standard")]))
-	nodes.append(Node("B4","standard", None, [Connection("B3", "standard"),Connection("C4", "standard"),Connection("B5","standard"),Connection("A4","standard")]))
-	nodes.append(Node("B5","camp", None, [Connection("B4", "standard"),Connection("C4", "standard"),Connection("C5","standard"),Connection("C6", "standard"),Connection("B6", "standard"),Connection("A6","standard"),Connection("A5", "standard"),Connection("A4","standard")]))
-	nodes.append(Node("B6","standard", None, [Connection("B5", "rail"),Connection("C6", "rail"),Connection("A6","rail")]))
-	nodes.append(Node("B7","standard", None, [Connection("C7", "rail"),Connection("B8", "standard"),Connection("A7","rail")]))
-	nodes.append(Node("B8","camp", None, [Connection("B7", "standard"),Connection("C7", "standard"),Connection("C8","standard"),Connection("C9", "standard"),Connection("B9", "standard"),Connection("A9","standard"),Connection("A8", "standard"),Connection("A7", "standard")]))
-	nodes.append(Node("B9","standard", None, [Connection("B8", "standard"),Connection("C9", "standard"),Connection("B10","standard"),Connection("A9","standard")]))
-	nodes.append(Node("B10","camp", None, [Connection("B9", "standard"),Connection("C9", "standard"),Connection("C10","standard"),Connection("C11", "standard"),Connection("B11", "standard"),Connection("A11","standard"),Connection("A10", "standard"),Connection("A9", "standard")]))
-	nodes.append(Node("B11","standard", None, [Connection("B10", "standard"),Connection("C11","rail"),Connection("B12","standard"),Connection("A11","rail")]))
-	nodes.append(Node("B12","HQ", None, [Connection("B11", "standard"),Connection("C12","standard"),Connection("A12","standard")]))
+	nodes["B1"] = (Node("B1","HQ", None, [Connection("C1", "standard"),Connection("B2", "standard"),Connection("A1", "standard")]))
+	nodes["B2"] = (Node("B2","standard", None, [Connection("B1", "standard"),Connection("C2", "rail"),Connection("B3","standard"),Connection("A2","rail")]))
+	nodes["B3"] = (Node("B3","camp", None, [Connection("B2", "standard"),Connection("C2", "standard"),Connection("C3","standard"),Connection("C4", "standard"),Connection("B4", "standard"),Connection("A4","standard"),Connection("A3","standard"),Connection("A2","standard")]))
+	nodes["B4"] = (Node("B4","standard", None, [Connection("B3", "standard"),Connection("C4", "standard"),Connection("B5","standard"),Connection("A4","standard")]))
+	nodes["B5"] = (Node("B5","camp", None, [Connection("B4", "standard"),Connection("C4", "standard"),Connection("C5","standard"),Connection("C6", "standard"),Connection("B6", "standard"),Connection("A6","standard"),Connection("A5", "standard"),Connection("A4","standard")]))
+	nodes["B6"] = (Node("B6","standard", None, [Connection("B5", "rail"),Connection("C6", "rail"),Connection("A6","rail")]))
+	nodes["B7"] = (Node("B7","standard", None, [Connection("C7", "rail"),Connection("B8", "standard"),Connection("A7","rail")]))
+	nodes["B8"] = (Node("B8","camp", None, [Connection("B7", "standard"),Connection("C7", "standard"),Connection("C8","standard"),Connection("C9", "standard"),Connection("B9", "standard"),Connection("A9","standard"),Connection("A8", "standard"),Connection("A7", "standard")]))
+	nodes["B9"] = (Node("B9","standard", None, [Connection("B8", "standard"),Connection("C9", "standard"),Connection("B10","standard"),Connection("A9","standard")]))
+	nodes["B10"] = (Node("B10","camp", None, [Connection("B9", "standard"),Connection("C9", "standard"),Connection("C10","standard"),Connection("C11", "standard"),Connection("B11", "standard"),Connection("A11","standard"),Connection("A10", "standard"),Connection("A9", "standard")]))
+	nodes["B11"] = (Node("B11","standard", None, [Connection("B10", "standard"),Connection("C11","rail"),Connection("B12","standard"),Connection("A11","rail")]))
+	nodes["B12"] = (Node("B12","HQ", None, [Connection("B11", "standard"),Connection("C12","standard"),Connection("A12","standard")]))
 		
 	#C nodes
-	nodes.append(Node("C1","standard", None, [Connection("B1", "standard"),Connection("C2", "standard"),Connection("D1", "standard")]))
-	nodes.append(Node("C2","standard", None, [Connection("C1", "standard"),Connection("D2", "rail"),Connection("D3","standard"),Connection("C3","standard"),Connection("B3","standard"),Connection("B2","rail")]))
-	nodes.append(Node("C3","standard", None, [Connection("C2", "standard"),Connection("D3", "standard"),Connection("C4","standard"),Connection("B3", "standard")]))
-	nodes.append(Node("C4","camp", None, [Connection("C3", "standard"),Connection("D3", "standard"),Connection("D4","standard"),Connection("D5","standard"),Connection("C5", "standard"),Connection("B5", "standard"),Connection("B4","standard"),Connection("B3","standard")]))
-	nodes.append(Node("C5","standard", None, [Connection("C4", "standard"),Connection("D5", "standard"),Connection("C6","standard"),Connection("B5", "standard")]))
-	nodes.append(Node("C6","standard", None, [Connection("C5", "standard"),Connection("D5", "standard"),Connection("D6","rail"),Connection("C7", "rail"),Connection("B6", "rail"),Connection("B5","standard")]))
-	nodes.append(Node("C7","standard", None, [Connection("C6", "rail"),Connection("D7", "rail"),Connection("D8","standard"),Connection("C8","standard"),Connection("B8","standard"),Connection("B7","standard")]))
-	nodes.append(Node("C8","standard", None, [Connection("C7", "standard"),Connection("D8", "standard"),Connection("C9","standard"),Connection("C8", "standard")]))
-	nodes.append(Node("C9","camp", None, [Connection("C8", "standard"),Connection("D8", "standard"),Connection("D9","standard"),Connection("D10","standard"),Connection("C10", "standard"),Connection("B10", "standard"),Connection("B9","standard"),Connection("B8","standard")]))
-	nodes.append(Node("C10","standard", None, [Connection("C9", "standard"),Connection("D10", "standard"),Connection("C11","standard"),Connection("B10", "standard")]))
-	nodes.append(Node("C11","standard", None, [Connection("C10", "standard"),Connection("D10","standard"),Connection("D11","rail"),Connection("C12","standard"),Connection("B11","rail"),Connection("B10","standard")]))
-	nodes.append(Node("C12","standard", None, [Connection("C11", "standard"),Connection("D12","standard"),Connection("B12","standard")]))
+	nodes["C1"] = (Node("C1","standard", None, [Connection("B1", "standard"),Connection("C2", "standard"),Connection("D1", "standard")]))
+	nodes["C2"] = (Node("C2","standard", None, [Connection("C1", "standard"),Connection("D2", "rail"),Connection("D3","standard"),Connection("C3","standard"),Connection("B3","standard"),Connection("B2","rail")]))
+	nodes["C3"] = (Node("C3","standard", None, [Connection("C2", "standard"),Connection("D3", "standard"),Connection("C4","standard"),Connection("B3", "standard")]))
+	nodes["C4"] = (Node("C4","camp", None, [Connection("C3", "standard"),Connection("D3", "standard"),Connection("D4","standard"),Connection("D5","standard"),Connection("C5", "standard"),Connection("B5", "standard"),Connection("B4","standard"),Connection("B3","standard")]))
+	nodes["C5"] = (Node("C5","standard", None, [Connection("C4", "standard"),Connection("D5", "standard"),Connection("C6","standard"),Connection("B5", "standard")]))
+	nodes["C6"] = (Node("C6","standard", None, [Connection("C5", "standard"),Connection("D5", "standard"),Connection("D6","rail"),Connection("C7", "rail"),Connection("B6", "rail"),Connection("B5","standard")]))
+	nodes["C7"] = (Node("C7","standard", None, [Connection("C6", "rail"),Connection("D7", "rail"),Connection("D8","standard"),Connection("C8","standard"),Connection("B8","standard"),Connection("B7","standard")]))
+	nodes["C8"] = (Node("C8","standard", None, [Connection("C7", "standard"),Connection("D8", "standard"),Connection("C9","standard"),Connection("C8", "standard")]))
+	nodes["C9"] = (Node("C9","camp", None, [Connection("C8", "standard"),Connection("D8", "standard"),Connection("D9","standard"),Connection("D10","standard"),Connection("C10", "standard"),Connection("B10", "standard"),Connection("B9","standard"),Connection("B8","standard")]))
+	nodes["C10"] = (Node("C10","standard", None, [Connection("C9", "standard"),Connection("D10", "standard"),Connection("C11","standard"),Connection("B10", "standard")]))
+	nodes["C11"] = (Node("C11","standard", None, [Connection("C10", "standard"),Connection("D10","standard"),Connection("D11","rail"),Connection("C12","standard"),Connection("B11","rail"),Connection("B10","standard")]))
+	nodes["C12"] = (Node("C12","standard", None, [Connection("C11", "standard"),Connection("D12","standard"),Connection("B12","standard")]))
 
 	#D nodes
-	nodes.append(Node("D1","HQ", None, [Connection("E1", "standard"),Connection("D2", "standard"),Connection("C1", "standard")]))
-	nodes.append(Node("D2","standard", None, [Connection("D1", "standard"),Connection("E2", "rail"),Connection("D3","standard"),Connection("C2","rail")]))
-	nodes.append(Node("D3","camp", None, [Connection("D2", "standard"),Connection("E2", "standard"),Connection("E3","standard"),Connection("E4", "standard"),Connection("D4", "standard"),Connection("C4","standard"),Connection("C3","standard"),Connection("C2","standard")]))
-	nodes.append(Node("D4","standard", None, [Connection("D3", "standard"),Connection("E4", "standard"),Connection("D5","standard"),Connection("C4","standard")]))
-	nodes.append(Node("D5","camp", None, [Connection("D4", "standard"),Connection("E4", "standard"),Connection("E5","standard"),Connection("E6", "standard"),Connection("D6", "standard"),Connection("C6","standard"),Connection("C5", "standard"),Connection("C4","standard")]))
-	nodes.append(Node("D6","standard", None, [Connection("D5", "rail"),Connection("E6", "rail"),Connection("C6","rail")]))
-	nodes.append(Node("D7","standard", None, [Connection("E7", "rail"),Connection("D8", "standard"),Connection("C7","rail")]))
-	nodes.append(Node("D8","camp", None, [Connection("D7", "standard"),Connection("E7", "standard"),Connection("E8","standard"),Connection("E9", "standard"),Connection("D9", "standard"),Connection("C9","standard"),Connection("C8", "standard"),Connection("C7", "standard")]))
-	nodes.append(Node("D9","standard", None, [Connection("D8", "standard"),Connection("E9", "standard"),Connection("D10","standard"),Connection("C9","standard")]))
-	nodes.append(Node("D10","camp", None, [Connection("D9", "standard"),Connection("E9", "standard"),Connection("E10","standard"),Connection("E11", "standard"),Connection("D11", "standard"),Connection("C11","standard"),Connection("C10", "standard"),Connection("C9", "standard")]))
-	nodes.append(Node("D11","standard", None, [Connection("D10", "standard"),Connection("E11","rail"),Connection("D12","standard"),Connection("C11","rail")]))
-	nodes.append(Node("D12","HQ", None, [Connection("D11", "standard"),Connection("E12","standard"),Connection("C12","standard")]))
+	nodes["D1"] = (Node("D1","HQ", None, [Connection("E1", "standard"),Connection("D2", "standard"),Connection("C1", "standard")]))
+	nodes["D2"] = (Node("D2","standard", None, [Connection("D1", "standard"),Connection("E2", "rail"),Connection("D3","standard"),Connection("C2","rail")]))
+	nodes["D3"] = (Node("D3","camp", None, [Connection("D2", "standard"),Connection("E2", "standard"),Connection("E3","standard"),Connection("E4", "standard"),Connection("D4", "standard"),Connection("C4","standard"),Connection("C3","standard"),Connection("C2","standard")]))
+	nodes["D4"] = (Node("D4","standard", None, [Connection("D3", "standard"),Connection("E4", "standard"),Connection("D5","standard"),Connection("C4","standard")]))
+	nodes["D5"] = (Node("D5","camp", None, [Connection("D4", "standard"),Connection("E4", "standard"),Connection("E5","standard"),Connection("E6", "standard"),Connection("D6", "standard"),Connection("C6","standard"),Connection("C5", "standard"),Connection("C4","standard")]))
+	nodes["D6"] = (Node("D6","standard", None, [Connection("D5", "rail"),Connection("E6", "rail"),Connection("C6","rail")]))
+	nodes["D7"] = (Node("D7","standard", None, [Connection("E7", "rail"),Connection("D8", "standard"),Connection("C7","rail")]))
+	nodes["D8"] = (Node("D8","camp", None, [Connection("D7", "standard"),Connection("E7", "standard"),Connection("E8","standard"),Connection("E9", "standard"),Connection("D9", "standard"),Connection("C9","standard"),Connection("C8", "standard"),Connection("C7", "standard")]))
+	nodes["D9"] = (Node("D9","standard", None, [Connection("D8", "standard"),Connection("E9", "standard"),Connection("D10","standard"),Connection("C9","standard")]))
+	nodes["D10"] = (Node("D10","camp", None, [Connection("D9", "standard"),Connection("E9", "standard"),Connection("E10","standard"),Connection("E11", "standard"),Connection("D11", "standard"),Connection("C11","standard"),Connection("C10", "standard"),Connection("C9", "standard")]))
+	nodes["D11"] = (Node("D11","standard", None, [Connection("D10", "standard"),Connection("E11","rail"),Connection("D12","standard"),Connection("C11","rail")]))
+	nodes["D12"] = (Node("D12","HQ", None, [Connection("D11", "standard"),Connection("E12","standard"),Connection("C12","standard")]))
 
 	#E nodes	
-	nodes.append(Node("E1","standard", None, [Connection("D1", "standard"),Connection("E2", "standard")]))
-	nodes.append(Node("E2","standard", None, [Connection("E1", "standard"),Connection("E3", "rail"),Connection("D3","standard"),Connection("D2","rail")]))
-	nodes.append(Node("E3","standard", None, [Connection("E2", "rail"),Connection("D3", "standard"),Connection("E4","rail")]))
-	nodes.append(Node("E4","standard", None, [Connection("E3", "rail"),Connection("E5", "rail"),Connection("D5","standard"),Connection("D4","standard"),Connection("D3","standard")]))
-	nodes.append(Node("E5","standard", None, [Connection("E4", "rail"),Connection("D5", "standard"),Connection("E6","rail")]))
-	nodes.append(Node("E6","standard", None, [Connection("E5", "rail"),Connection("D5", "standard"),Connection("D6","rail"),Connection("E7","rail")]))
-	nodes.append(Node("E7","standard", None, [Connection("E6", "rail"),Connection("D7", "rail"),Connection("D8","standard"),Connection("E8","rail")]))
-	nodes.append(Node("E8","standard", None, [Connection("E7", "rail"),Connection("D8", "standard"),Connection("E9","rail")]))
-	nodes.append(Node("E9","standard", None, [Connection("E8", "rail"),Connection("D8", "standard"),Connection("D9","standard"),Connection("D10","standard"),Connection("E10","rail")]))
-	nodes.append(Node("E10","standard", None, [Connection("E9", "rail"),Connection("D10", "standard"),Connection("E11","rail")]))
-	nodes.append(Node("E11","standard", None, [Connection("E10", "rail"),Connection("D10","standard"),Connection("D11","rail"),Connection("E12","standard")]))
-	nodes.append(Node("E12","standard", None, [Connection("E11", "standard"),Connection("D12","standard")]))
+	nodes["E1"] = (Node("E1","standard", None, [Connection("D1", "standard"),Connection("E2", "standard")]))
+	nodes["E2"] = (Node("E2","standard", None, [Connection("E1", "standard"),Connection("E3", "rail"),Connection("D3","standard"),Connection("D2","rail")]))
+	nodes["E3"] = (Node("E3","standard", None, [Connection("E2", "rail"),Connection("D3", "standard"),Connection("E4","rail")]))
+	nodes["E4"] = (Node("E4","standard", None, [Connection("E3", "rail"),Connection("E5", "rail"),Connection("D5","standard"),Connection("D4","standard"),Connection("D3","standard")]))
+	nodes["E5"] = (Node("E5","standard", None, [Connection("E4", "rail"),Connection("D5", "standard"),Connection("E6","rail")]))
+	nodes["E6"] = (Node("E6","standard", None, [Connection("E5", "rail"),Connection("D5", "standard"),Connection("D6","rail"),Connection("E7","rail")]))
+	nodes["E7"] = (Node("E7","standard", None, [Connection("E6", "rail"),Connection("D7", "rail"),Connection("D8","standard"),Connection("E8","rail")]))
+	nodes["E8"] = (Node("E8","standard", None, [Connection("E7", "rail"),Connection("D8", "standard"),Connection("E9","rail")]))
+	nodes["E9"] = (Node("E9","standard", None, [Connection("E8", "rail"),Connection("D8", "standard"),Connection("D9","standard"),Connection("D10","standard"),Connection("E10","rail")]))
+	nodes["E10"] = (Node("E10","standard", None, [Connection("E9", "rail"),Connection("D10", "standard"),Connection("E11","rail")]))
+	nodes["E11"] = (Node("E11","standard", None, [Connection("E10", "rail"),Connection("D10","standard"),Connection("D11","rail"),Connection("E12","standard")]))
+	nodes["E12"] = (Node("E12","standard", None, [Connection("E11", "standard"),Connection("D12","standard")]))
 	
 	# open our json that has our initial configuration
 	initConfig = open("initConfig.json")
@@ -525,7 +606,14 @@ def main():
 						
 			# update our board (currently ignoring opponent's pieces and railroads)
 			updateBoard(movingFrom, movingTo, movingPlayer, moveType)
-						
+				
+				
+			#We don't want to send our move, if the referee is simply reporting what we have done.
+			if(ourPlayer == int(movingPlayer)):
+				sys.stdout.flush()
+				continue
+					
+					
 			# select the next move (currently brute-force moving one piece till it dies)
 			nextMove = calculateMove()
 			
@@ -538,7 +626,11 @@ def main():
 			#	print "Error: We ran out of time to complete our move. Exiting game."
 			#	sys.exit(0)
 		
+#		if (ourPlayer == 1):
+#			sys.stderr.write(str(sorted(nodes.items())) + "\n")
+
 		sys.stdout.flush()	
 		
 if __name__ == "__main__":
     main()
+
