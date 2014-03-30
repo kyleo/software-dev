@@ -343,18 +343,19 @@ class EPieceCount:
 # 	utilizes hasmap to map piece type to %
 class typeProbs:
 
-	probDict = {"FldMshl": 0, 
-				"Gen" : 0,
-				"LtGen": 0,
-				"BrigGen": 0,
-				"Col" : 0,
-				"Maj": 0,
-				"Capt" : 0,
-				"PlCmdr" : 0,
-				"Engr" : 0,
-				"Gren" : 0,
-				"LndMn": 0,
-				"Flg" :0}
+	# needs to add up to 1
+	probDict = {"9" : .083, # field marshall 
+							"8" : .083, # general
+							"7" : .083, # lt. general
+							"6" : .083, # brig. general
+							"5" : .083, # colonel
+							"4" : .083, # major
+							"3" : .083, # captain
+							"2" : .083, # pl commander
+							"1" : .083, # engineer
+							"B" : .083, # bomb
+							"L" : .083, # land mine
+							"F" : .083} # flag
 					
 	def	__init__(self, probDict):
 		self.probDict = probDict
@@ -367,7 +368,11 @@ class typeProbs:
 	
 	def setTypeProbs(self, hshmp):
 		self.probDict = hshmp
-	
+
+	# update the probability of this piece
+	def updateProb:
+		return -1 # to-do
+			
 	#returns the type of highest probability
 	def getMostProb:
 		return max(self.probDict.iterkeys(), key=(lamda key: self.probDict[key]))
