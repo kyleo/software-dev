@@ -136,7 +136,6 @@ def updateBoard(movingFrom, movingTo, movingPlayer, moveType):
 			piece = delNode.getPiece()
 			delNode.setPiece(None)
 			
-			
 			setNode = nodes[movingTo]
 			setNode.setPiece(piece)
 				
@@ -147,7 +146,6 @@ def updateBoard(movingFrom, movingTo, movingPlayer, moveType):
 			delNode = nodes[movingFrom]
 			piece = delNode.getPiece()
 			delNode.setPiece(None)
-			
 								
 		elif moveType == "tie":
 			#tie operation
@@ -156,7 +154,6 @@ def updateBoard(movingFrom, movingTo, movingPlayer, moveType):
 			delNode = nodes[movingFrom]
 			piece = delNode.getPiece()
 			delNode.setPiece(None)
-			
 					
 	else:
 		#updated player 2 section of the board
@@ -170,8 +167,6 @@ def updateBoard(movingFrom, movingTo, movingPlayer, moveType):
 			piece = delNode.getPiece()
 			delNode.setPiece(None)
 			
-			
-
 		elif moveType == "tie":
 			#tie operation
 			# Just set the moveTo to empty, which should delete the piece
@@ -179,10 +174,7 @@ def updateBoard(movingFrom, movingTo, movingPlayer, moveType):
 			delNode = nodes[movingTo]
 			piece = delNode.getPiece()
 			delNode.setPiece(None)
-					
-
-
-
+			
 #  places piece in the board
 def injectPiece(piece, id):
 	
@@ -194,7 +186,6 @@ def injectPiece(piece, id):
 	node = nodes[piecePos]
 	node.setPiece(FPiece(id, pieceType))
 	nodes[piecePos] = node
-	
 	
 class Node:
 	def __init__(self, id, type, piece, connections):
@@ -310,33 +301,7 @@ class EPieceCount:
 	def setAmts(self, hshmp):
 		self.EPieces = hshmp
 
-#Track which of our pieces are left
-#KO @30March 
-class EPieceCount:
-	EPieces = {"FldMshl": 1, 
-				"Gen" : 1,
-				"LtGen": 2,
-				"BrigGen": 2,
-				"Col" : 2,
-				"Maj": 2,
-				"Capt" : 3,
-				"PlCmdr" : 3,
-				"Engr" : 3,
-				"Gren" : 2,
-				"LndMn": 2,
-				"Flg" :1}
-				
-	def	__init__(self, epieces):
-		self.epieces = EPieces
-	
-	def getAmtOfType(self, amt):
-		return self.Epieces[amt]
-	
-	def setAmtOfTyp(self, typ, amt):
-		self.EPieces[typ] = amt
-	
-	def setAmts(self, hshmp):
-		self.EPieces = hshmp
+
 '''
 
 #Tracks probabilities of possible piece types.
@@ -439,9 +404,7 @@ def getBestMove(pos):
 			
 			if isMoveValid(move):
 				return "(" + pos + " " + move + ")"
-	
 
-		
 # determine if a move is valid(!!!!!!!!!for now means we arn't moving onto a space occupied by our own piece!!!!!!!)
 def isMoveValid(move):
 
@@ -571,23 +534,23 @@ def main():
 		# startTime = time.time() 
 	
 		if (message == "Invalid Board Setup"):
-			sys.stderr.write("Board was not correctly set up. Exiting game.")
+			sys.stderr.write("Board was not correctly set up. Exiting game.\n")
 			sys.exit(0)
 		
 		# match just the first 18 characters which are always the same
 		elif (message[:18] == "Invalid Board Move"):
-			sys.stderr.write("We sent an invalid move. Exiting game.")
+			sys.stderr.write("We sent an invalid move. Exiting game.\n")
 			sys.exit(0)
 			
 		elif ("Victory" in message):
 			if ("1" in message):
-				sys.stderr.write("Player 1 is the victor. Exiting game.")
+				sys.stderr.write("Player 1 is the victor. Exiting game.\n")
 				sys.exit(0)
 			elif ("2" in message):
-				sys.stderr.write("Player 2 is the victor. Exiting game.")
+				sys.stderr.write("Player 2 is the victor. Exiting game.\n")
 				sys.exit(0)
 			else:
-				sys.stderr.write("There was no victor. Exiting game.")
+				sys.stderr.write("There was no victor. Exiting game.\n")
 				sys.exit(0)
 		
 		elif (message[0] == "F"):
@@ -599,7 +562,7 @@ def main():
 			
 			# make sure the referee's message is properly formatted
 			if (message.count(' ') != 3):
-				sys.stderr.write("Error: The referee provided an invalid message.")
+				sys.stderr.write("Error: The referee provided an invalid message.\n")
 				sys.exit(0)
 			
 			# parse the referee's input
