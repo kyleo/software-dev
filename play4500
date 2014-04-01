@@ -116,7 +116,7 @@ def updateBoard(movingFrom, movingTo, movingPlayer, moveType):
 	# if the ref returns 1 and we need to update our side of the board
 	if int(movingPlayer) == ourPlayer:
 		# updating the board for a move type "move". Just take the piece in the
-		#   MoveFrom position and put it in the moveTo position. Then empty the
+		#   MovingFrom position and put it in the movingTo position. Then empty the
 		#	old position
 		if moveType == "move":
 			#move operation
@@ -130,57 +130,79 @@ def updateBoard(movingFrom, movingTo, movingPlayer, moveType):
 							
 		elif moveType == "win":
 			#win operation
-			#!!! For now the same as MOVE but will need to augment enemy piece tracking in the future
-			
+			#deletes our piece by setting the movingFrom to None	
 			delNode = nodes[movingFrom]
 			piece = delNode.getPiece()
 			delNode.setPiece(None)
 			
-			
+			#deletes Enemy piece by setting our piece on the space
 			setNode = nodes[movingTo]
 			setNode.setPiece(piece)
 				
-				
+			#TODO-Track Enemys Death
+
+
 		elif moveType == "lose":
 			#lose operation
-			# Just set the moveFrom to empty, which should delete the piece
+			#Set the movingFrom to empty, which should delete our piece
+			#No Need to Change the Enemy's piece as it stays in the same spot.
 			delNode = nodes[movingFrom]
 			piece = delNode.getPiece()
 			delNode.setPiece(None)
 			
+
+			#TODO-Track Enemys Win 
 								
 		elif moveType == "tie":
 			#tie operation
-			# Just set the moveFrom to empty, which should delete the piece
-			#in the future will need to Augment Enemy board and pieces as well.
+			#Set the movingFrom to empty, which should delete the piece
 			delNode = nodes[movingFrom]
 			piece = delNode.getPiece()
 			delNode.setPiece(None)
 			
-					
-	else:
-		#updated player 2 section of the board
-		# we aren't tracking this yet so for now
-		
-		if moveType == "win":
-			#lose operation
-			# Just set the moveTo to empty, which should delete the piece
-			
+			#Set the movingTo to empty, which deletes enemy piece
 			delNode = nodes[movingTo]
 			piece = delNode.getPiece()
 			delNode.setPiece(None)
+					
+			#TODO-Track Enemys Death
+	else:
+		if moveType == "win":
+			#lose operation
+			#Set the movingTo to empty, which should delete the enemy piece from the previous position
+			delNode = nodes[movingFrom]
+			piece = delNode.getPiece()
+			delNode.setPiece(None)
+
 			
+			#Place the enemy piece on the movingTo node, which deletes our piece	
+			delNode = nodes[movingFrom]
+			setNode = nodes[movingTo]
+			setNode.setPiece(piece)
 			
+			#TODO-Track Enemys Win 
+
+		if moveType == "lose":
+			#Set the movingFrom to empty, which deletes the enemy piece
+			delNode = nodes[movingFrom]
+			piece = delNode.getPiece()
+			delNode.setPiece(None)		
+
+			#TODO-Track Enemys Death
 
 		elif moveType == "tie":
 			#tie operation
-			# Just set the moveTo to empty, which should delete the piece
-			#in the future will need to Augment Enemy board and pieces as well.
+			#Set the movingTo to empty, which deletes the enemy piece
 			delNode = nodes[movingTo]
 			piece = delNode.getPiece()
 			delNode.setPiece(None)
 					
+			#Set the movingFrom to empty, which deletes our piece
+			delNode = nodes[movingFrom]
+			piece = delNode.getPiece()
+			delNode.setPiece(None)
 
+			#TODO-Track Enemys Death
 
 
 #  places piece in the board
@@ -261,9 +283,6 @@ class FPiece:
 	def setType(self, type):
 		self.type = type
 
-	def isFriendly(self):
-		return True
-
 	def __str__(self):
 		return "FPiece(Id:" + str(self.id) + " Type:" + self.type + ") "		
 
@@ -275,9 +294,6 @@ class EPiece:
 	def getId(self):
 		return self.id
 		
-	def isFriendly(self):
-		return False;
-
 	def __str__(self):
 		return "EPiece(Id: " + str(self.id) + ") "
 		
@@ -523,9 +539,9 @@ def getPiecePositions():
 	positions = []
 	
 	for key, node in nodes.iteritems():
-		#check if a node contains a piece(!!!!!!!!!later make it only friendly pieces!!!!!!!!)
+		#check if a node contains a friendly piece
 		if node.getPiece():
-			if node.getPiece().isFriendly(): 
+			if isinstance(node.getPiece(),FPiece): 
 				#if (ourPlayer == 1):
 				#	sys.stderr.write("Piece is: " + str(node.getPiece()) + " at: " + key + " adding to piece list.\n")
 				positions.append(key)
@@ -551,7 +567,11 @@ def getBestMove(pos):
 def isMoveValid(move):
 
 	if nodes[move].getPiece():
-		return False
+		#check if piece is friendly or enemy
+		if isinstance(nodes[move].getPiece(),FPiece):
+			return False
+		else:
+			return True
 	else:
 		return True
 		
@@ -742,6 +762,7 @@ def main():
 		# get the input from the ref
 		message = raw_input()
 				
+
 		# start capturing the time duration of our move (not needed for prototype)
 		# startTime = time.time() 
 	
@@ -783,6 +804,10 @@ def main():
 			movingTo = messageArgs[1]
 			movingPlayer = messageArgs[2]
 			moveType = messageArgs[3]
+			if(ourPlayer == 1):
+				 sys.stderr.write(" MovingFrom: " + movingFrom)
+				 sys.stderr.write(" MovingTo:" + movingTo)
+				 sys.stderr.write(" MovingPlayer: " + movingPlayer + "\n")
 						
 			# update our board (currently ignoring opponent's pieces and railroads)
 			updateBoard(movingFrom, movingTo, movingPlayer, moveType)
