@@ -261,6 +261,9 @@ class FPiece:
 	def setType(self, type):
 		self.type = type
 
+	def isFriendly(self):
+		return True
+
 	def __str__(self):
 		return "FPiece(Id:" + str(self.id) + " Type:" + self.type + ") "		
 
@@ -272,6 +275,9 @@ class EPiece:
 	def getId(self):
 		return self.id
 		
+	def isFriendly(self):
+		return False;
+
 	def __str__(self):
 		return "EPiece(Id: " + str(self.id) + ") "
 		
@@ -495,6 +501,12 @@ class Connection:
 	def __str__(self):
 		return "Connection(To:" + str(self.connectedId) + " Type:" + self.typ + ") "
 
+#Put the enemy pieces on the board
+def placeEnemyPieces():
+	positions = ["A7","A8","A9","A10","A11","A12","B7","B9","B11","B12","C7","C8","C10","C11","C12","D7","D9","D11","D12","E7","E8","E9","E10","E11","E12"]
+	for i, pos in enumerate(positions):
+		nodes[pos].setPiece(EPiece(i))		
+
 # calculate our next move
 def calculateMove():
 	bestMove = ""
@@ -513,9 +525,10 @@ def getPiecePositions():
 	for key, node in nodes.iteritems():
 		#check if a node contains a piece(!!!!!!!!!later make it only friendly pieces!!!!!!!!)
 		if node.getPiece():
-			#if (ourPlayer == 1):
-			#	sys.stderr.write("Piece is: " + str(node.getPiece()) + " at: " + key + " adding to piece list.\n")
-			positions.append(key)
+			if node.getPiece().isFriendly(): 
+				#if (ourPlayer == 1):
+				#	sys.stderr.write("Piece is: " + str(node.getPiece()) + " at: " + key + " adding to piece list.\n")
+				positions.append(key)
 			
 	return positions
 
@@ -658,8 +671,13 @@ def main():
 
 	initConfig.close()
 	
+
 	# initialize our probability metrics and rank sets
 	createRankSets()
+
+	# set up the enemy pieces on the board
+	placeEnemyPieces();
+
 	
 	# send the referee our initial configuration
 	sys.stdout.write(initialConfig)
