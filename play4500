@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# CS4500 Assignment 6
+# CS4500 Assignment 8
 # Nate Bessa, Dan Brown, Kyle Oestreich, Tyler Rosini
 
 import os
@@ -124,9 +124,6 @@ def updateBoard(movingFrom, movingTo, movingPlayer, moveType):
 			delNode = nodes[movingFrom]
 			piece = delNode.getPiece()
 			delNode.setPiece(None)
-			
-			
-					
 			
 			setNode = nodes[movingTo]
 			setNode.setPiece(piece)
@@ -278,45 +275,17 @@ class EPiece:
 	def __str__(self):
 		return "EPiece(Id: " + str(self.id) + ") "
 		
-#Track what enemy pieces are left
-#KO @30March
-class EPieceCount:
-	EPieces = {"FldMshl": 1, 
-				"Gen" : 1,
-				"LtGen": 2,
-				"BrigGen": 2,
-				"Col" : 2,
-				"Maj": 2,
-				"Capt" : 3,
-				"PlCmdr" : 3,
-				"Engr" : 3,
-				"Gren" : 2,
-				"LndMn": 2,
-				"Flg" :1}
-				
-	def	__init__(self, epieces):
-		self.epieces = EPieces
-	
-	def getAmtOfType(self, amt):
-		return self.Epieces[amt]
-	
-	def setAmtOfTyp(self, typ, amt):
-		self.EPieces[typ] = amt
-	
-	def setAmts(self, hshmp):
-		self.EPieces = hshmp
-
 # class to represent a set of possible pieces belonging to rank
 class rankSet:
-	
-	# at game start, any enemy piece could be of this rank, so set all enemy
-	#  piece IDs here
-	possiblePieces = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 
-										14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
 	
 	def __init__(self, rank, amount):
 		self.rank = rank
 		self.amount = amount
+		# at game start, any enemy piece ID could be of this rank
+		self.possiblePieces = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 
+													14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
+		# as the game is played, added enemy piece IDs here as we unmask them
+		self.definitePieces = []
 		
 	def getRank(self):
 		return self.rank
@@ -327,20 +296,27 @@ class rankSet:
 		
 	def getPossiblePieces(self):
 		return self.possiblePieces
+		
+	def getDefinitePieces(self):
+		return self.definitePieces
 	
 	def removePossiblePiece(self, piece):
-		self.possiblePieces.remove(piece)
+		self.possiblePieces.remove(piece) # REPLACE PIECE WITH PIECE.GETID()
 	
-	# what is the probability that a specific enemy piece is of this rank?	
-	def probabilityIsPiece(self, piece):
-		if piece not in self.possiblePieces:
-			return 0
-		else:
-			numberOfPossiblePieces = len(self.possiblePieces)
-			return 1 / float(numberOfPossiblePieces)
+	# by declaring a piece of this rank, we must remove its possibility of being
+	# of any other rank
+	def addDefinitePiece(self, piece):
+		self.definitePieces.append(piece) # REPLACE PIECE WITH PIECE.GETID()
+		removePossibilities(piece, self.getRank()) # REPLACE PIECE WITH PIECE.GETID()
+	
+	# TO-DO: need to call this function at some point
+	# if we've found all the enemy piece IDs with this rank, purge possiblePieces
+	def purgePossible(self):
+		if len(self.definitePieces) == self.amount:
+			self.possiblePieces = self.definitePieces
 		
 
-# function to debug nate's classes -- RENAME TO BE INITIALIZED AT GAME START
+# function to debug nate's classes
 def createRankSets():
 	
 	global rank1
@@ -383,89 +359,121 @@ def createRankSets():
 							"B" : rankB,
 							"F" : rankF}
 							
-# 	sys.stderr.write('\n\n\n')
-# 	sys.stderr.write("Check probabilities of piece 5 being of each rank.\n")
-# 	
-# 	for key, set in rankSets.iteritems():
-# 		sys.stderr.write("Rank: " + key + ". Probability: ")
-# 		probability = set.probabilityIsPiece(5)
-# 		sys.stderr.write(str(probability))
-# 		sys.stderr.write("\n")
-
 # determine the probability of one of our pieces beating one of the enemy's.
 # takes instances of EPiece and FPiece class
 def probOfWinning(playerPiece, enemyPiece):
 
-	enemyPieceID = 1 # enemyPiece.getId
-	playerPieceID = 1 # playerPiece.getId
-	playerPieceType = "2" # playerPiece.getType
+	enemyPieceID = enemyPiece # REPLACE WITH: enemyPiece.getId
+	playerPieceID = 1 # REPLACE WITH: playerPiece.getId
+	playerPieceType = playerPiece # REPLACE WITH: playerPiece.getType
 	
-# 	for key, set in rankSets.iteritems():
-# 		pass
+	# convert rank types to integers for easier looping (INDEXED AT 0)
+	if playerPieceType == "B":
+		playerPieceTypeInt = 9
+	elif playerPieceType == "F":
+		playerPieceTypeInt = 10
+	elif playerPieceType == "L":
+		playerPieceTypeInt = 11
+	else:
+		playerPieceTypeInt = int(playerPieceType) - 1 
+	
+	# check if this enemy piece's rank has already been discovered
+ 	for key, set in iter(sorted(rankSets.iteritems())):
+ 		if enemyPieceID in set.getDefinitePieces():
+ 			return 1
+ 			
+ 	# TO-DO: in future code, ignore flag! (we wont lose against a flag)
+ 	
+ 	# rudimentary probability system. this will be significantly enhanced
+ 	# before final submission
+ 	probabilityAgainstWeighted = 0
+ 	probabilityForWeighted = 0
+ 	
+ 	# currently unused, but may be useful for future probability metrics
+	probabilityForCount = 0
+ 	probabilityAgainstCount = 0
+
+ 	i = 0
+ 	for key, set in iter(sorted(rankSets.iteritems())):
+ 		# ranks we will win over
+ 		if i < playerPieceTypeInt:
+	 		if enemyPieceID in set.getPossiblePieces():
+	 			rankProbability = float(set.getAmount()) / len(set.getPossiblePieces())
+	 			probabilityForWeighted += rankProbability
+	 			probabilityForCount += 1
+	 	# ranks we will lose to
+	 	else:
+	 		if enemyPieceID in set.getPossiblePieces():
+	 			rankProbability = float(set.getAmount()) / len(set.getPossiblePieces())
+	 			probabilityAgainstWeighted += rankProbability
+	 			probabilityAgainstCount += 1
+	 	i += 1
+
+#		For debugging, delete me when done
+# 	sys.stderr.write("  For -- Count: " + str(probabilityForCount) + 
+# 								", Weighted: " + str(probabilityForWeighted) + "\n")
+# 	sys.stderr.write("  Against -- Count: " + str(probabilityAgainstCount) + 
+# 								", Weighted "+ str(probabilityAgainstWeighted) + "\n")
+	
+	totalProbabilityWeight = probabilityForWeighted + probabilityAgainstWeighted
+	
+	finalProbability = probabilityForWeighted / totalProbabilityWeight
+	
+ 	return finalProbability
 
 # update probabilities TO-DO
 def updateProbabilities(enemyPiece, playerPiece, moveOutcome):
 	
-	enemyPieceID = 1 # enemyPiece.getId
-	playerPieceID = 1 # playerPiece.getId
-	playerPieceType = "2" # playerPiece.getType
+	enemyPieceID = enemyPiece # REPLACE WITH: enemyPiece.getId
+	playerPieceID = 1 # REPLACE WITH: playerPiece.getId
+	playerPieceType = playerPiece # REPLACE WITH: playerPiece.getType
 	
-	# need to convert rank types & player piece rank to integers
+	# convert rank types to integers for easier looping
+	# note: INDEXED AT 0
+	if playerPieceType == "B":
+		playerPieceTypeInt = 9
+	elif playerPieceType == "F":
+		playerPieceTypeInt = 10
+	elif playerPieceType == "L":
+		playerPieceTypeInt = 11
+	else:
+		playerPieceTypeInt = int(playerPieceType) - 1 
 	
-	if moveOutcome = "tie":
+	if moveOutcome == "tie":
+		# if tie, enemy piece is either of same rank or a bomb or landmine
 		for key, set in rankSets.iteritems():
-			if key == "L" || key == "B" || key == playerPieceType:
+			if key != "L" and key != "B" and key != playerPieceType:
+		 		set.removePossiblePiece(enemyPieceID)
+	# TO-DO: needs to account for engineers vs landmines
+	# TO-DO: needs to ignore Flags
+	elif moveOutcome == "win":
+		# remove enemy from all ranks higher than our rank and remove L/B/F possibility
+		i = 0
+		for key, set in iter(sorted(rankSets.iteritems())):
+			if i >= playerPieceTypeInt:
 				set.removePossiblePiece(enemyPieceID)
-	else if moveOutcome = "win":
-		# remove enemy from all ranks below our rank
-		for key, set in rankSets.iteritems():
-			pass
-	else if moveOutcome = "loss":
-		# remove enemy from all ranks higher than our rank
-		for key, set in rankSets.iteritems():
-			pass
+			i += 1
+	# TO-DO: needs to ignore Flags
+	elif moveOutcome == "loss":
+		# remove enemy from all ranks below our rank and remove L/B/F possibility
+		i = 0
+		for key, set in iter(sorted(rankSets.iteritems())):
+			if i <= playerPieceTypeInt:
+				set.removePossiblePiece(enemyPieceID)
+			elif i > 8:
+				set.removePossiblePiece(enemyPieceID)
+			i += 1
+				
+	# TO-DO: needs to check and use addDefinitePiece
 			
+# remove enemy piece IDs from all rank set's possiblePiece if its discovered elsewhere
+def removePossibilities(enemyPiece, knownRank):
 
-
-'''
-#Tracks probabilities of possible piece types.
-# 	utilizes hasmap to map piece type to %
-class typeProbs:
-
-	# needs to add up to 1
-	probDict = {"9" : .083, # field marshall 
-							"8" : .083, # general
-							"7" : .083, # lt. general
-							"6" : .083, # brig. general
-							"5" : .083, # colonel
-							"4" : .083, # major
-							"3" : .083, # captain
-							"2" : .083, # pl commander
-							"1" : .083, # engineer
-							"B" : .083, # bomb
-							"L" : .083, # land mine
-							"F" : .083} # flag
-					
-	def	__init__(self, probDict):
-		self.probDict = probDict
+	enemyPieceID = enemyPiece # REPLACE WITH: enemyPiece.getId
 	
-	def getTypeProb(self, typ):
-		return self.probDict[typ]
-	
-	def setTypeProb(self, typ, prob):
-		self.probDict[typ] = prob
-	
-	def setTypeProbs(self, hshmp):
-		self.probDict = hshmp
-	
-	#returns the type of highest probability
-	def getMostProb:
-		return max(self.probDict.iterkeys(), key=(lamda key: self.probDict[key]))
-		
-	#returns the type of lowest probab
-	def getLeastProb:
-		return min(self.probDict, key=self.probDict.get)
-'''
+	for key, set in iter(sorted(rankSets.iteritems())):
+		if key != knownRank:
+			set.removePossiblePiece(enemyPieceID)
 
 class Connection:
 	def __init__(self, connectedId, typ):
@@ -662,12 +670,54 @@ def main():
 		sys.stdout.write("( A6 A7 )")
 		sys.stdout.flush()
 	
-	# NATE's DEBUGGING STUFF (DELETE ME) -------------
+	# NATE's DEBUGGING STUFF (DELETE ME) -----------------------------------------
 	
-	probOfWinning(1,1)
-	sys.exit(0)
+# 	sys.stderr.write("\n\n")
 	
-	# END NATE'S DEBUGGING STUFF ---------------------
+# 	FOR DEBUGGING UPDATE PROBABILITIES
+#  	for key, set in iter(sorted(rankSets.iteritems())):
+#  		sys.stderr.write("Rank: " + key + ". getPossiblePieces: " + str(set.getPossiblePieces()) + "\n")
+# 	
+# 	updateProbabilities(1,"9", "tie")	
+# 	sys.stderr.write("\n\n\n")
+# 	
+#  	for key, set in iter(sorted(rankSets.iteritems())):
+# 		sys.stderr.write("Rank: " + key + ". getPossiblePieces: " + str(set.getPossiblePieces()) + "\n")
+
+# 	# create some game board updates
+# 	updateProbabilities(1, "4", "win")
+# 	updateProbabilities(2, "2", "loss")
+# 	updateProbabilities(3, "6", "win")
+# 	updateProbabilities(4, "4", "loss")
+# 	updateProbabilities(5, "9", "win")
+# 	updateProbabilities(6, "3", "loss")
+# 	updateProbabilities(7, "5", "loss")
+#  	updateProbabilities(8, "8", "tie")
+# 	updateProbabilities(12, "7", "loss")
+# 	updateProbabilities(14, "3", "loss")
+# 	updateProbabilities(16, "2", "loss")
+# 	updateProbabilities(19, "7", "win")
+# 	updateProbabilities(23, "3", "win")
+# 	updateProbabilities(24, "7", "loss")
+# 	
+# 	sys.stderr.write("Dead Pieces: 1, 3, 5, 8, 19, 23\n")
+# 	sys.stderr.write("Alive Pieces: 2, 4, 6, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 20, 21, 22, 24, 25\n\n")
+# 	
+#  	for key, set in iter(sorted(rankSets.iteritems())):
+#  		sys.stderr.write("Rank: " + key + 
+#  										", #Amount: " + str(set.getAmount()) + 
+#  										", #Possible: " + str(len(set.getPossiblePieces())) + 
+#  										", Prob: " + str(round(set.getAmount() / float(len(set.getPossiblePieces())),2)) +
+#  										" -- " + str(set.getPossiblePieces()) + "\n")
+# 	
+# 	sys.stderr.write("\n")
+# 	
+# 	sys.stderr.write("Probability our piece RANK 6 beats enemy ID 8: " + str(probOfWinning("6", 8)) + "\n")
+# 	
+# 	sys.stderr.write("\n")
+# 	sys.exit(0)
+	
+	# END NATE'S DEBUGGING STUFF -------------------------------------------------
 	
 	while(True):
 	
